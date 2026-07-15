@@ -182,6 +182,22 @@ class ValidateArtifactsTest(unittest.TestCase):
         self.assertIn(real, paths)
         self.assertNotIn(link, paths)
 
+    def test_smoke_structure_rejects_symlink_outputs_evidence(self):
+        exp_dir = self.tmpdir / "experiments" / "main" / "run-symlink-output"
+        exp_dir.mkdir(parents=True)
+        (exp_dir / "run_demo.py").write_text("print('ok')\n", encoding="utf-8")
+        external_outputs = self.tmpdir / "external-outputs"
+        external_outputs.mkdir()
+        (exp_dir / "outputs_evil").symlink_to(external_outputs, target_is_directory=True)
+        for doc in ["README.md", "RUN_BENCHMARK.md", "DATA_SOURCES.md", "CITATION.cff"]:
+            (self.tmpdir / doc).write_text("placeholder\n", encoding="utf-8")
+        result = validate_artifacts.ValidationResult()
+
+        validate_artifacts.validate_smoke_structure(self.tmpdir, result)
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("lacks RUN.md" in error for error in result.errors), result.errors)
+
 
 if __name__ == "__main__":
     unittest.main()

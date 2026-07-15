@@ -164,7 +164,7 @@ def validate_smoke_structure(root: Path, result: ValidationResult) -> None:
         rel = exp_dir.relative_to(root).as_posix()
         has_run_doc = (exp_dir / "RUN.md").is_file()
         has_validation_doc = (exp_dir / "VALIDATION.md").is_file()
-        has_outputs = any(child.is_dir() and child.name.startswith("outputs") for child in exp_dir.iterdir())
+        has_outputs = any(child.is_dir() and not child.is_symlink() and child.name.startswith("outputs") for child in exp_dir.iterdir())
         result.check(has_run_doc or has_validation_doc or has_outputs, f"experiment {rel} lacks RUN.md, VALIDATION.md, or outputs*/ evidence")
 
     root_docs = ["README.md", "RUN_BENCHMARK.md", "DATA_SOURCES.md", "CITATION.cff"]
