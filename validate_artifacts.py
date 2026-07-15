@@ -33,6 +33,9 @@ class ValidationResult:
         if not condition:
             self.errors.append(message)
 
+    def passed(self, message: str) -> None:
+        self.checks += 1
+
     def warn(self, message: str) -> None:
         self.warnings.append(message)
 
@@ -47,7 +50,13 @@ def sha256_file(path: Path, chunk_size: int = 1024 * 1024) -> str:
 
 def safe_manifest_path(path_text: str) -> bool:
     path = Path(path_text)
-    return not path.is_absolute() and ".." not in path.parts and path_text not in {"", "."}
+    return (
+        "\x00" not in path_text
+        and not any(ord(char) < 32 for char in path_text)
+        and not path.is_absolute()
+        and ".." not in path.parts
+        and path_text not in {"", "."}
+    )
 
 
 def load_json(path: Path) -> object:
@@ -65,9 +74,10 @@ def tracked_files(root: Path) -> list[Path]:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        return [root / p.decode() for p in completed.stdout.split(b"\0") if p]
+        candidates = [root / p.decode() for p in completed.stdout.split(b"\0") if p]
     except (OSError, subprocess.CalledProcessError):
-        return [p for p in root.rglob("*") if p.is_file() and ".git" not in p.parts]
+        candidates = [p for p in root.rglob("*") if ".git" not in p.parts]
+    return [p for p in candidates if p.is_file() and not p.is_symlink()]
 
 
 def validate_root_manifest(root: Path, result: ValidationResult) -> None:
@@ -114,15 +124,23 @@ def validate_root_manifest(root: Path, result: ValidationResult) -> None:
         seen.add(rel_path)
 
         artifact_path = root / rel_path
-        result.check(artifact_path.is_file(), f"manifested file is missing: {rel_path}")
-        if not artifact_path.is_file():
+        result.check(artifact_path.is_file() and not artifact_path.is_symlink(), f"manifested file is missing or is a symlink: {rel_path}")
+        if not artifact_path.is_file() or artifact_path.is_symlink():
             continue
 
-        actual_size = artifact_path.stat().st_size
+        try:
+            actual_size = artifact_path.stat().st_size
+        except OSError as exc:
+            result.check(False, f"cannot stat file {rel_path}: {exc}")
+            continue
         result.check(actual_size == expected_size, f"size mismatch for {rel_path}: expected {expected_size}, got {actual_size}")
 
         if isinstance(expected_sha256, str) and len(expected_sha256) == 64:
-            actual_sha256 = sha256_file(artifact_path)
+            try:
+                actual_sha256 = sha256_file(artifact_path)
+            except OSError as exc:
+                result.check(False, f"cannot read file {rel_path}: {exc}")
+                continue
             result.check(actual_sha256 == expected_sha256, f"sha256 mismatch for {rel_path}: expected {expected_sha256}, got {actual_sha256}")
 
 
@@ -136,7 +154,7 @@ def validate_json_syntax(root: Path, result: ValidationResult) -> None:
         except json.JSONDecodeError as exc:
             result.check(False, f"invalid JSON in {rel}: {exc}")
         else:
-            result.check(True, f"valid JSON: {rel}")
+            result.passed(f"valid JSON: {rel}")
 
 
 def validate_smoke_structure(root: Path, result: ValidationResult) -> None:

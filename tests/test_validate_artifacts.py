@@ -3,6 +3,7 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import validate_artifacts
 
@@ -79,6 +80,107 @@ class ValidateArtifactsTest(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertTrue(any("unsafe" in error for error in result.errors), result.errors)
+
+    def test_metadata_only_rejects_manifest_path_with_null_byte(self):
+        self.write_manifest(
+            [
+                {
+                    "path": "bad\u0000name.json",
+                    "size_bytes": 0,
+                    "sha256": "0" * 64,
+                }
+            ]
+        )
+
+        result = validate_artifacts.run_validation(self.tmpdir, "metadata-only")
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("unsafe" in error for error in result.errors), result.errors)
+
+    def test_metadata_only_reports_missing_manifested_file(self):
+        self.write_manifest(
+            [
+                {
+                    "path": "missing.json",
+                    "size_bytes": 12,
+                    "sha256": "0" * 64,
+                }
+            ]
+        )
+
+        result = validate_artifacts.run_validation(self.tmpdir, "metadata-only")
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("manifested file is missing" in error for error in result.errors), result.errors)
+
+    def test_metadata_only_reports_size_mismatch(self):
+        payload = self.tmpdir / "artifact.json"
+        payload.write_text('{"ok": true}\n', encoding="utf-8")
+        self.write_manifest(
+            [
+                {
+                    "path": "artifact.json",
+                    "size_bytes": payload.stat().st_size + 1,
+                    "sha256": validate_artifacts.sha256_file(payload),
+                }
+            ]
+        )
+
+        result = validate_artifacts.run_validation(self.tmpdir, "metadata-only")
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("size mismatch" in error for error in result.errors), result.errors)
+
+    def test_metadata_only_rejects_symlink_manifest_entry(self):
+        target = self.tmpdir / "outside.json"
+        target.write_text('{"secret": true}\n', encoding="utf-8")
+        symlink = self.tmpdir / "artifact.json"
+        symlink.symlink_to(target)
+        self.write_manifest(
+            [
+                {
+                    "path": "artifact.json",
+                    "size_bytes": target.stat().st_size,
+                    "sha256": validate_artifacts.sha256_file(target),
+                }
+            ]
+        )
+
+        result = validate_artifacts.run_validation(self.tmpdir, "metadata-only")
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("symlink" in error for error in result.errors), result.errors)
+
+    def test_metadata_only_reports_file_read_errors_without_crashing(self):
+        payload = self.tmpdir / "artifact.json"
+        payload.write_text('{"ok": true}\n', encoding="utf-8")
+        self.write_manifest(
+            [
+                {
+                    "path": "artifact.json",
+                    "size_bytes": payload.stat().st_size,
+                    "sha256": "0" * 64,
+                }
+            ]
+        )
+
+        with mock.patch("validate_artifacts.sha256_file", side_effect=OSError("permission denied")):
+            result = validate_artifacts.run_validation(self.tmpdir, "metadata-only")
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("cannot read file artifact.json" in error for error in result.errors), result.errors)
+
+    def test_tracked_files_fallback_skips_symlinks(self):
+        real = self.tmpdir / "artifact.json"
+        real.write_text("{}\n", encoding="utf-8")
+        link = self.tmpdir / "linked.json"
+        link.symlink_to(real)
+
+        with mock.patch("validate_artifacts.subprocess.run", side_effect=OSError("git unavailable")):
+            paths = validate_artifacts.tracked_files(self.tmpdir)
+
+        self.assertIn(real, paths)
+        self.assertNotIn(link, paths)
 
 
 if __name__ == "__main__":
