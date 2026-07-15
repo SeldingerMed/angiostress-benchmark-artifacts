@@ -59,6 +59,12 @@ def safe_manifest_path(path_text: str) -> bool:
     )
 
 
+def valid_sha256(value: object) -> bool:
+    if not isinstance(value, str) or len(value) != 64:
+        return False
+    return all(char in "0123456789abcdefABCDEF" for char in value)
+
+
 def load_json(path: Path) -> object:
     with path.open("r", encoding="utf-8") as fh:
         return json.load(fh)
@@ -116,7 +122,7 @@ def validate_root_manifest(root: Path, result: ValidationResult) -> None:
         expected_sha256 = entry.get("sha256")
         result.check(isinstance(rel_path, str) and safe_manifest_path(rel_path), f"{prefix} has unsafe or missing path: {rel_path!r}")
         result.check(isinstance(expected_size, int) and expected_size >= 0, f"{prefix} has invalid size_bytes: {expected_size!r}")
-        result.check(isinstance(expected_sha256, str) and len(expected_sha256) == 64, f"{prefix} has invalid sha256: {expected_sha256!r}")
+        result.check(valid_sha256(expected_sha256), f"{prefix} has invalid sha256: {expected_sha256!r}")
         if not (isinstance(rel_path, str) and safe_manifest_path(rel_path)):
             continue
 
@@ -135,7 +141,7 @@ def validate_root_manifest(root: Path, result: ValidationResult) -> None:
             continue
         result.check(actual_size == expected_size, f"size mismatch for {rel_path}: expected {expected_size}, got {actual_size}")
 
-        if isinstance(expected_sha256, str) and len(expected_sha256) == 64:
+        if valid_sha256(expected_sha256):
             try:
                 actual_sha256 = sha256_file(artifact_path)
             except OSError as exc:
@@ -158,13 +164,17 @@ def validate_json_syntax(root: Path, result: ValidationResult) -> None:
 
 
 def validate_smoke_structure(root: Path, result: ValidationResult) -> None:
-    experiment_dirs = [p.parent for p in root.glob("experiments/**/*.py") if p.name.startswith("run_")]
+    experiment_root = root / "experiments"
+    experiment_dirs = [p.parent for p in experiment_root.rglob("run_*.py") if p.is_file()] if experiment_root.is_dir() else []
     result.check(bool(experiment_dirs), "no runnable experiment scripts found under experiments/")
     for exp_dir in sorted(set(experiment_dirs)):
         rel = exp_dir.relative_to(root).as_posix()
         has_run_doc = (exp_dir / "RUN.md").is_file()
         has_validation_doc = (exp_dir / "VALIDATION.md").is_file()
-        has_outputs = any(child.is_dir() and not child.is_symlink() and child.name.startswith("outputs") for child in exp_dir.iterdir())
+        has_outputs = any(
+            child.is_dir() and not child.is_symlink() and child.name.lower().startswith("outputs")
+            for child in exp_dir.iterdir()
+        )
         result.check(has_run_doc or has_validation_doc or has_outputs, f"experiment {rel} lacks RUN.md, VALIDATION.md, or outputs*/ evidence")
 
     root_docs = ["README.md", "RUN_BENCHMARK.md", "DATA_SOURCES.md", "CITATION.cff"]

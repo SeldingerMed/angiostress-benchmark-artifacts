@@ -198,6 +198,50 @@ class ValidateArtifactsTest(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertTrue(any("lacks RUN.md" in error for error in result.errors), result.errors)
 
+    def test_smoke_structure_accepts_case_insensitive_outputs_directory(self):
+        exp_dir = self.tmpdir / "experiments" / "main" / "run-uppercase-output"
+        exp_dir.mkdir(parents=True)
+        (exp_dir / "run_demo.py").write_text("print('ok')\n", encoding="utf-8")
+        (exp_dir / "Outputs").mkdir()
+        for doc in ["README.md", "RUN_BENCHMARK.md", "DATA_SOURCES.md", "CITATION.cff"]:
+            (self.tmpdir / doc).write_text("placeholder\n", encoding="utf-8")
+        result = validate_artifacts.ValidationResult()
+
+        validate_artifacts.validate_smoke_structure(self.tmpdir, result)
+
+        self.assertTrue(result.ok, result.errors)
+
+    def test_smoke_structure_finds_run_scripts_directly_under_experiments(self):
+        exp_dir = self.tmpdir / "experiments"
+        exp_dir.mkdir()
+        (exp_dir / "run_root.py").write_text("print('ok')\n", encoding="utf-8")
+        for doc in ["README.md", "RUN_BENCHMARK.md", "DATA_SOURCES.md", "CITATION.cff"]:
+            (self.tmpdir / doc).write_text("placeholder\n", encoding="utf-8")
+        result = validate_artifacts.ValidationResult()
+
+        validate_artifacts.validate_smoke_structure(self.tmpdir, result)
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("experiment experiments lacks" in error for error in result.errors), result.errors)
+
+    def test_metadata_only_rejects_non_hex_sha256(self):
+        payload = self.tmpdir / "artifact.json"
+        payload.write_text('{"ok": true}\n', encoding="utf-8")
+        self.write_manifest(
+            [
+                {
+                    "path": "artifact.json",
+                    "size_bytes": payload.stat().st_size,
+                    "sha256": "z" * 64,
+                }
+            ]
+        )
+
+        result = validate_artifacts.run_validation(self.tmpdir, "metadata-only")
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("invalid sha256" in error for error in result.errors), result.errors)
+
 
 if __name__ == "__main__":
     unittest.main()
