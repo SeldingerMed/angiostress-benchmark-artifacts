@@ -182,7 +182,7 @@ def validate_smoke_structure(root: Path, result: ValidationResult) -> None:
         ]
         result.check(
             not symlink_outputs,
-            f"experiment {rel} has a symlink outputs directory",
+            f"experiment {rel} has a symlink outputs path",
         )
         has_outputs = any(
             child.is_dir() and not child.is_symlink() and child.name.lower().startswith("outputs")
@@ -237,7 +237,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
-    mode = "metadata-only" if args.metadata_only else args.mode
+    mode = args.mode
     root = args.root.resolve()
 
     result = run_validation(root, mode)

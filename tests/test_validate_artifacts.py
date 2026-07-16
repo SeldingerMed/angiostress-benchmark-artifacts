@@ -239,7 +239,7 @@ class ValidateArtifactsTest(unittest.TestCase):
         validate_artifacts.validate_smoke_structure(self.tmpdir, result)
 
         self.assertFalse(result.ok)
-        self.assertTrue(any("symlink outputs" in error for error in result.errors), result.errors)
+        self.assertTrue(any("symlink outputs path" in error for error in result.errors), result.errors)
 
     def test_smoke_structure_accepts_case_insensitive_outputs_directory(self):
         exp_dir = self.tmpdir / "experiments" / "main" / "run-uppercase-output"
