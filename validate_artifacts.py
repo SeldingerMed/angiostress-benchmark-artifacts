@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -80,7 +81,7 @@ def tracked_files(root: Path) -> list[Path]:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        candidates = [root / p.decode() for p in completed.stdout.split(b"\0") if p]
+        candidates = [root / os.fsdecode(p) for p in completed.stdout.split(b"\0") if p]
     except (OSError, subprocess.CalledProcessError):
         candidates = [p for p in root.rglob("*") if ".git" not in p.parts]
     return [p for p in candidates if p.is_file() and not p.is_symlink()]
@@ -175,7 +176,10 @@ def validate_smoke_structure(root: Path, result: ValidationResult) -> None:
             child.is_dir() and not child.is_symlink() and child.name.lower().startswith("outputs")
             for child in exp_dir.iterdir()
         )
-        result.check(has_run_doc or has_validation_doc or has_outputs, f"experiment {rel} lacks RUN.md, VALIDATION.md, or outputs*/ evidence")
+        result.check(
+            has_run_doc or has_validation_doc or has_outputs,
+            f"experiment {rel} lacks RUN.md, VALIDATION.md, or an outputs* directory",
+        )
 
     root_docs = ["README.md", "RUN_BENCHMARK.md", "DATA_SOURCES.md", "CITATION.cff"]
     for doc in root_docs:
@@ -198,13 +202,14 @@ def run_validation(root: Path, mode: str) -> ValidationResult:
 
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Validate committed AngioStress benchmark artifacts.")
-    parser.add_argument(
+    mode_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument(
         "--mode",
         choices=("metadata-only", "smoke", "full"),
         default="metadata-only",
         help="validation depth; all modes are offline unless future checks add external reruns",
     )
-    parser.add_argument(
+    mode_group.add_argument(
         "--metadata-only",
         action="store_true",
         help="shortcut for --mode metadata-only",

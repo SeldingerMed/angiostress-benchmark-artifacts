@@ -1,4 +1,5 @@
 import json
+import os
 import shutil
 import tempfile
 import unittest
@@ -182,6 +183,19 @@ class ValidateArtifactsTest(unittest.TestCase):
         self.assertIn(real, paths)
         self.assertNotIn(link, paths)
 
+    def test_tracked_files_preserves_non_utf8_git_paths(self):
+        raw_path = b"artifact-\xff.json"
+        completed = mock.Mock(stdout=raw_path + b"\0")
+
+        with (
+            mock.patch("validate_artifacts.subprocess.run", return_value=completed),
+            mock.patch("pathlib.Path.is_file", return_value=True),
+            mock.patch("pathlib.Path.is_symlink", return_value=False),
+        ):
+            paths = validate_artifacts.tracked_files(self.tmpdir)
+
+        self.assertEqual(paths, [self.tmpdir / os.fsdecode(raw_path)])
+
     def test_smoke_structure_rejects_symlink_outputs_evidence(self):
         exp_dir = self.tmpdir / "experiments" / "main" / "run-symlink-output"
         exp_dir.mkdir(parents=True)
@@ -241,6 +255,10 @@ class ValidateArtifactsTest(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertTrue(any("invalid sha256" in error for error in result.errors), result.errors)
+
+    def test_cli_rejects_conflicting_mode_flags(self):
+        with self.assertRaises(SystemExit):
+            validate_artifacts.parse_args(["--mode", "smoke", "--metadata-only"])
 
 
 if __name__ == "__main__":
