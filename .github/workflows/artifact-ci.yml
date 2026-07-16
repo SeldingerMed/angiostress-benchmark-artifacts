@@ -1,0 +1,81 @@
+name: Artifact CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  artifact-smoke:
+    name: Python syntax and artifact metadata smoke checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Compile Python sources
+        run: python -m compileall experiments
+
+      - name: Validate committed JSON files
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          failures = []
+          count = 0
+          for path in sorted(Path('.').rglob('*.json')):
+              if '.git' in path.parts:
+                  continue
+              count += 1
+              try:
+                  with path.open('r', encoding='utf-8') as handle:
+                      json.load(handle)
+              except Exception as exc:  # pragma: no cover - CI diagnostics
+                  failures.append(f'{path}: {exc}')
+
+          if failures:
+              raise SystemExit('Invalid JSON files:\n' + '\n'.join(failures))
+
+          print(f'Validated {count} JSON files')
+          PY
+
+      - name: Check required artifact entrypoints
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          # These files are the documented benchmark entrypoints and canonical
+          # smoke runners that a published artifact bundle must keep available.
+          required_paths = [
+              'README.md',
+              'RUN_BENCHMARK.md',
+              'DATA_SOURCES.md',
+              'CITATION.cff',
+              'MANIFEST.json',
+              'requirements.txt',
+              'experiments/main/run-angiostress-s0s1-renderer-smoke/run_renderer_smoke.py',
+              'experiments/main/run-angiostress-s1-frozen-model-smoke/run_sam_smoke.py',
+              'experiments/main/run-angiostress-s2c-third-frozen-model-panel-extension/run_model_panel_smoke.py',
+              'experiments/analysis/s3a-dias-test-multisequence-ranking/run_dias_multisequence_ranking.py',
+              'experiments/analysis/s3b-dias-full-test-split-ranking/run_dias_full_test_split.py',
+              'experiments/analysis/s3f-cathaction-human-segmentation-subset-ranking/run_cathaction_human_segmentation_subset.py',
+          ]
+
+          missing = [path for path in required_paths if not Path(path).is_file()]
+          if missing:
+              raise SystemExit('Missing required artifact entrypoints:\n' + '\n'.join(missing))
+
+          print(f'Found {len(required_paths)} required artifact entrypoints')
+          PY
