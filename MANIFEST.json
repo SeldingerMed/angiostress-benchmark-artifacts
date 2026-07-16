@@ -5,7 +5,7 @@
   "scope": "runnable_benchmark_code_configs_generated_outputs_metrics_and_manifests",
   "file_count": 2509,
   "public_mirrors": {
-    "github": "https://github.com/txmed82/angiostress-benchmark-artifacts",
+    "github": "https://github.com/SeldingerMed/angiostress-benchmark-artifacts",
     "hugging_face_dataset": "https://huggingface.co/datasets/txmedai/angiostress-benchmark-artifacts"
   },
   "files": [
@@ -21,8 +21,8 @@
     },
     {
       "path": "README.md",
-      "size_bytes": 4682,
-      "sha256": "ecfa8e0703ca1a69765b4917a0916e3d962f4acdf6e0514e6b467acbce848005"
+      "size_bytes": 4687,
+      "sha256": "9ed355a66e5f3a9642295ad968ece9bb24465a2baa76c3bc6a2490d12cae5eb4"
     },
     {
       "path": "RUN_BENCHMARK.md",
