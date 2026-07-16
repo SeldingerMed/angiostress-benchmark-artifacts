@@ -105,13 +105,22 @@ def validate_root_manifest(root: Path, result: ValidationResult) -> None:
     if not isinstance(manifest, dict):
         return
 
+    schema_version = manifest.get("schema_version")
+    result.check(
+        schema_version == 3,
+        f"MANIFEST.json has unsupported schema_version={schema_version!r}",
+    )
+
     files = manifest.get("files")
     result.check(isinstance(files, list), "MANIFEST.json must contain a files array")
     if not isinstance(files, list):
         return
 
     file_count = manifest.get("file_count")
-    result.check(file_count == len(files), f"MANIFEST.json file_count={file_count!r} but files has {len(files)} entries")
+    result.check(
+        isinstance(file_count, int) and not isinstance(file_count, bool) and file_count == len(files),
+        f"MANIFEST.json file_count={file_count!r} but files has {len(files)} entries",
+    )
 
     seen: set[str] = set()
     for index, entry in enumerate(files):
@@ -182,7 +191,7 @@ def validate_smoke_structure(root: Path, result: ValidationResult) -> None:
         ]
         result.check(
             not symlink_outputs,
-            f"experiment {rel} has a symlink outputs path",
+            f"experiment {rel} has a symlink named outputs*",
         )
         has_outputs = any(
             child.is_dir() and not child.is_symlink() and child.name.lower().startswith("outputs")
@@ -237,8 +246,11 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
-    mode = args.mode
+    mode = "metadata-only" if args.metadata_only else args.mode
     root = args.root.resolve()
+    if not root.is_dir():
+        print(f"artifact validation failed: root is not a directory: {root}", file=sys.stderr)
+        return 1
 
     result = run_validation(root, mode)
 

@@ -1,4 +1,5 @@
 import json
+import io
 import os
 import shutil
 import tempfile
@@ -65,6 +66,30 @@ class ValidateArtifactsTest(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertTrue(any("sha256 mismatch" in error for error in result.errors), result.errors)
+
+    def test_metadata_only_rejects_unsupported_schema_version(self):
+        self.write_manifest([])
+        manifest_path = self.tmpdir / "MANIFEST.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["schema_version"] = 2
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+        result = validate_artifacts.run_validation(self.tmpdir, "metadata-only")
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("unsupported schema_version" in error for error in result.errors), result.errors)
+
+    def test_metadata_only_rejects_non_integer_file_count(self):
+        self.write_manifest([])
+        manifest_path = self.tmpdir / "MANIFEST.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["file_count"] = "0"
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+        result = validate_artifacts.run_validation(self.tmpdir, "metadata-only")
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("file_count='0'" in error for error in result.errors), result.errors)
 
     def test_metadata_only_rejects_unsafe_manifest_path(self):
         self.write_manifest(
@@ -239,7 +264,7 @@ class ValidateArtifactsTest(unittest.TestCase):
         validate_artifacts.validate_smoke_structure(self.tmpdir, result)
 
         self.assertFalse(result.ok)
-        self.assertTrue(any("symlink outputs path" in error for error in result.errors), result.errors)
+        self.assertTrue(any("symlink named outputs" in error for error in result.errors), result.errors)
 
     def test_smoke_structure_accepts_case_insensitive_outputs_directory(self):
         exp_dir = self.tmpdir / "experiments" / "main" / "run-uppercase-output"
@@ -288,6 +313,16 @@ class ValidateArtifactsTest(unittest.TestCase):
     def test_cli_rejects_conflicting_mode_flags(self):
         with self.assertRaises(SystemExit):
             validate_artifacts.parse_args(["--mode", "smoke", "--metadata-only"])
+
+    def test_main_rejects_missing_root(self):
+        missing_root = self.tmpdir / "missing"
+        stderr = io.StringIO()
+
+        with mock.patch("sys.stderr", stderr):
+            exit_code = validate_artifacts.main(["--root", str(missing_root)])
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("root is not a directory", stderr.getvalue())
 
 
 if __name__ == "__main__":
