@@ -200,6 +200,7 @@ class ValidateArtifactsTest(unittest.TestCase):
         exp_dir = self.tmpdir / "experiments" / "main" / "run-symlink-output"
         exp_dir.mkdir(parents=True)
         (exp_dir / "run_demo.py").write_text("print('ok')\n", encoding="utf-8")
+        (exp_dir / "RUN.md").write_text("# Run\n", encoding="utf-8")
         external_outputs = self.tmpdir / "external-outputs"
         external_outputs.mkdir()
         (exp_dir / "outputs_evil").symlink_to(external_outputs, target_is_directory=True)
@@ -210,7 +211,7 @@ class ValidateArtifactsTest(unittest.TestCase):
         validate_artifacts.validate_smoke_structure(self.tmpdir, result)
 
         self.assertFalse(result.ok)
-        self.assertTrue(any("lacks RUN.md" in error for error in result.errors), result.errors)
+        self.assertTrue(any("symlink outputs" in error for error in result.errors), result.errors)
 
     def test_smoke_structure_accepts_case_insensitive_outputs_directory(self):
         exp_dir = self.tmpdir / "experiments" / "main" / "run-uppercase-output"

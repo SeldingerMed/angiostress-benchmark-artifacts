@@ -172,6 +172,15 @@ def validate_smoke_structure(root: Path, result: ValidationResult) -> None:
         rel = exp_dir.relative_to(root).as_posix()
         has_run_doc = (exp_dir / "RUN.md").is_file()
         has_validation_doc = (exp_dir / "VALIDATION.md").is_file()
+        symlink_outputs = [
+            child
+            for child in exp_dir.iterdir()
+            if child.is_symlink() and child.name.lower().startswith("outputs")
+        ]
+        result.check(
+            not symlink_outputs,
+            f"experiment {rel} has a symlink outputs directory",
+        )
         has_outputs = any(
             child.is_dir() and not child.is_symlink() and child.name.lower().startswith("outputs")
             for child in exp_dir.iterdir()
