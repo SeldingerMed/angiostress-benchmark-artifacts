@@ -98,6 +98,22 @@ class ValidateArtifactsTest(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertTrue(any("unsafe" in error for error in result.errors), result.errors)
 
+    def test_metadata_only_rejects_manifest_path_with_del_character(self):
+        self.write_manifest(
+            [
+                {
+                    "path": "bad\u007fname.json",
+                    "size_bytes": 0,
+                    "sha256": "0" * 64,
+                }
+            ]
+        )
+
+        result = validate_artifacts.run_validation(self.tmpdir, "metadata-only")
+
+        self.assertFalse(result.ok)
+        self.assertTrue(any("unsafe" in error for error in result.errors), result.errors)
+
     def test_metadata_only_reports_missing_manifested_file(self):
         self.write_manifest(
             [
@@ -182,6 +198,18 @@ class ValidateArtifactsTest(unittest.TestCase):
 
         self.assertIn(real, paths)
         self.assertNotIn(link, paths)
+
+    def test_tracked_files_falls_back_when_git_times_out(self):
+        artifact = self.tmpdir / "artifact.json"
+        artifact.write_text("{}\n", encoding="utf-8")
+
+        with mock.patch(
+            "validate_artifacts.subprocess.run",
+            side_effect=validate_artifacts.subprocess.TimeoutExpired("git", 30),
+        ):
+            paths = validate_artifacts.tracked_files(self.tmpdir)
+
+        self.assertIn(artifact, paths)
 
     def test_tracked_files_preserves_non_utf8_git_paths(self):
         raw_path = b"artifact-\xff.json"

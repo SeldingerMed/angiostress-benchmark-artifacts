@@ -54,6 +54,7 @@ def safe_manifest_path(path_text: str) -> bool:
     return (
         "\x00" not in path_text
         and not any(ord(char) < 32 for char in path_text)
+        and "\x7f" not in path_text
         and not path.is_absolute()
         and ".." not in path.parts
         and path_text not in {"", "."}
@@ -80,9 +81,10 @@ def tracked_files(root: Path) -> list[Path]:
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            timeout=30,
         )
         candidates = [root / os.fsdecode(p) for p in completed.stdout.split(b"\0") if p]
-    except (OSError, subprocess.CalledProcessError):
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
         candidates = [p for p in root.rglob("*") if ".git" not in p.parts]
     return [p for p in candidates if p.is_file() and not p.is_symlink()]
 
@@ -121,10 +123,11 @@ def validate_root_manifest(root: Path, result: ValidationResult) -> None:
         rel_path = entry.get("path")
         expected_size = entry.get("size_bytes")
         expected_sha256 = entry.get("sha256")
-        result.check(isinstance(rel_path, str) and safe_manifest_path(rel_path), f"{prefix} has unsafe or missing path: {rel_path!r}")
+        path_is_safe = isinstance(rel_path, str) and safe_manifest_path(rel_path)
+        result.check(path_is_safe, f"{prefix} has unsafe or missing path: {rel_path!r}")
         result.check(isinstance(expected_size, int) and expected_size >= 0, f"{prefix} has invalid size_bytes: {expected_size!r}")
         result.check(valid_sha256(expected_sha256), f"{prefix} has invalid sha256: {expected_sha256!r}")
-        if not (isinstance(rel_path, str) and safe_manifest_path(rel_path)):
+        if not path_is_safe:
             continue
 
         result.check(rel_path not in seen, f"duplicate manifest path: {rel_path}")
