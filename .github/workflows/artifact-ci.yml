@@ -56,6 +56,8 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
+          # These files are the documented benchmark entrypoints and canonical
+          # smoke runners that a published artifact bundle must keep available.
           required_paths = [
               'README.md',
               'RUN_BENCHMARK.md',
