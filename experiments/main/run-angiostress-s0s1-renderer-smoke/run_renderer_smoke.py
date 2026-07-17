@@ -65,6 +65,7 @@ def configure_synthetic_fixture(config: dict[str, Any], out_dir: Path) -> dict[s
     mask_path = fixture_dir / "vessel_mask.nii.gz"
 
     mask = np.zeros((48, 48, 48), dtype=np.uint8)
+    # Axis 0 is depth; this grid spans the in-plane y/x axes for each slice.
     yy, xx = np.ogrid[: mask.shape[1], : mask.shape[2]]
     for depth in range(6, 42):
         center_y = 24 + int(round(5 * np.sin(depth / 6)))

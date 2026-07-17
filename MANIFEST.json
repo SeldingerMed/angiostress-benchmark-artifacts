@@ -5,7 +5,7 @@
   "scope": "runnable_benchmark_code_configs_generated_outputs_metrics_and_manifests",
   "file_count": 2509,
   "public_mirrors": {
-    "github": "https://github.com/txmed82/angiostress-benchmark-artifacts",
+    "github": "https://github.com/SeldingerMed/angiostress-benchmark-artifacts",
     "hugging_face_dataset": "https://huggingface.co/datasets/txmedai/angiostress-benchmark-artifacts"
   },
   "files": [
@@ -21,8 +21,8 @@
     },
     {
       "path": "README.md",
-      "size_bytes": 4955,
-      "sha256": "013b236795ed219b18582e21fc4e9c7e11264cc81bb91c3bbe9372822c8a6f0c"
+      "size_bytes": 4960,
+      "sha256": "cb8ed5e4f95db7f3011df4fe4e6f01cb8657514752d18ac8e289dc2005e83a15"
     },
     {
       "path": "RUN_BENCHMARK.md",
@@ -10031,8 +10031,8 @@
     },
     {
       "path": "experiments/main/run-angiostress-s0s1-renderer-smoke/run_renderer_smoke.py",
-      "size_bytes": 15797,
-      "sha256": "d04cddbedd0b11856c53773ce98840edd90f5f95cff075148f6a4e6bf2acf288"
+      "size_bytes": 15874,
+      "sha256": "9e93976def2f85a0a7a11aadae55d9765d6e8f39b269d344b2d2b4b481d1f369"
     },
     {
       "path": "experiments/main/run-angiostress-s1-frozen-model-smoke/DEPENDENCY_AUDIT.md",
