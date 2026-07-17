@@ -21,7 +21,7 @@ Author: Colin Son, MD, Seldinger, Inc., San Antonio, TX. ORCID: https://orcid.or
 
 Public mirrors:
 
-- GitHub: https://github.com/txmed82/angiostress-benchmark-artifacts
+- GitHub: https://github.com/SeldingerMed/angiostress-benchmark-artifacts
 - Hugging Face dataset: https://huggingface.co/datasets/txmedai/angiostress-benchmark-artifacts
 
 ## Benchmark Cell
