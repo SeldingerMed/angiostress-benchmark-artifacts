@@ -7,8 +7,14 @@ The synthetic renderer can be rerun without DIAS or CathAction. The frozen model
 ## Minimal synthetic renderer check
 
 ```bash
-python experiments/main/run-angiostress-s0s1-renderer-smoke/run_renderer_smoke.py   --out experiments/main/run-angiostress-s0s1-renderer-smoke/outputs_rerun
+python3 experiments/main/run-angiostress-s0s1-renderer-smoke/run_renderer_smoke.py \
+  --config experiments/main/run-angiostress-s0s1-renderer-smoke/config.json \
+  --out experiments/main/run-angiostress-s0s1-renderer-smoke/outputs_rerun \
+  --synthetic-fixture
 ```
+
+`--synthetic-fixture` writes a tiny generated NIfTI mask under `outputs_rerun/`; it
+does not require the untracked TopCoW source paths recorded in the default config.
 
 ## Frozen model panel
 

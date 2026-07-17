@@ -46,8 +46,14 @@ Install the Python dependencies in `requirements.txt`. Full model reruns require
 Renderer scaffold:
 
 ```bash
-python experiments/main/run-angiostress-s0s1-renderer-smoke/run_renderer_smoke.py   --out experiments/main/run-angiostress-s0s1-renderer-smoke/outputs_rerun
+python3 experiments/main/run-angiostress-s0s1-renderer-smoke/run_renderer_smoke.py \
+  --config experiments/main/run-angiostress-s0s1-renderer-smoke/config.json \
+  --out experiments/main/run-angiostress-s0s1-renderer-smoke/outputs_rerun \
+  --synthetic-fixture
 ```
+
+The explicit fixture flag generates a tiny NIfTI vessel mask inside the rerun output
+directory, so this smoke check does not require the untracked TopCoW source case.
 
 Three-model panel scaffold after placing checkpoints and DIAS data at the recorded relative paths:
 

@@ -58,6 +58,34 @@ def sha256_array(array: np.ndarray) -> str:
     return h.hexdigest()
 
 
+def configure_synthetic_fixture(config: dict[str, Any], out_dir: Path) -> dict[str, Any]:
+    """Generate a tiny vessel mask so the renderer can run from a clean checkout."""
+    fixture_dir = out_dir / "synthetic_fixture"
+    fixture_dir.mkdir(parents=True, exist_ok=True)
+    mask_path = fixture_dir / "vessel_mask.nii.gz"
+
+    mask = np.zeros((48, 48, 48), dtype=np.uint8)
+    yy, xx = np.ogrid[: mask.shape[1], : mask.shape[2]]
+    for depth in range(6, 42):
+        center_y = 24 + int(round(5 * np.sin(depth / 6)))
+        center_x = 8 + depth // 2
+        mask[depth, (yy - center_y) ** 2 + (xx - center_x) ** 2 <= 4] = 1
+        if depth >= 22:
+            branch_y = center_y - (depth - 22) // 2
+            branch_x = center_x + (depth - 22) // 3
+            mask[depth, (yy - branch_y) ** 2 + (xx - branch_x) ** 2 <= 2] = 2
+
+    nib.save(nib.Nifti1Image(mask, np.eye(4)), str(mask_path))
+    configured = dict(config)
+    configured["source_case"] = {
+        "case_id": "generated_synthetic_fixture",
+        "source_type": "generated_smoke_fixture",
+        "mask_path": str(mask_path.resolve()),
+        "mask_sha256": sha256_file(mask_path),
+    }
+    return configured
+
+
 def normalize01(array: np.ndarray) -> np.ndarray:
     array = array.astype(np.float32)
     lo = float(array.min())
@@ -334,9 +362,16 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument(
+        "--synthetic-fixture",
+        action="store_true",
+        help="Generate a tiny vessel mask under --out instead of requiring the configured TopCoW source file.",
+    )
     args = parser.parse_args()
 
     config = load_json(args.config)
+    if args.synthetic_fixture:
+        config = configure_synthetic_fixture(config, args.out)
     result = save_outputs(config, args.out)
     summary = result["metrics"]["metrics"]
     print(json.dumps({

@@ -21,13 +21,13 @@
     },
     {
       "path": "README.md",
-      "size_bytes": 4682,
-      "sha256": "ecfa8e0703ca1a69765b4917a0916e3d962f4acdf6e0514e6b467acbce848005"
+      "size_bytes": 4955,
+      "sha256": "013b236795ed219b18582e21fc4e9c7e11264cc81bb91c3bbe9372822c8a6f0c"
     },
     {
       "path": "RUN_BENCHMARK.md",
-      "size_bytes": 1544,
-      "sha256": "6dfc1e732ff95183bfe7fff92040763758a8b32cb77b1d849be0b77205aff710"
+      "size_bytes": 1817,
+      "sha256": "53b309968a403f5796b466ce6c8b657203824fd7ee3e5242855a95940330a7b0"
     },
     {
       "path": "baseline/metric_contract.json",
@@ -10031,8 +10031,8 @@
     },
     {
       "path": "experiments/main/run-angiostress-s0s1-renderer-smoke/run_renderer_smoke.py",
-      "size_bytes": 14313,
-      "sha256": "4293ecf7a9d98be72b6afeb0d38391c32f04399e4ce5790213d047cbef13e36d"
+      "size_bytes": 15797,
+      "sha256": "d04cddbedd0b11856c53773ce98840edd90f5f95cff075148f6a4e6bf2acf288"
     },
     {
       "path": "experiments/main/run-angiostress-s1-frozen-model-smoke/DEPENDENCY_AUDIT.md",
